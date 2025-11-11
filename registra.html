@@ -32,26 +32,7 @@
     <div id="message"></div>
   </div>
 
-  <!-- Salvataggio su Firestore: firma in dataURL (niente Storage) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    // 🔧 INCOLLA QUI LA TUA CONFIG (stessa di index.html)
-    const firebaseConfig = {
-      apiKey: "TUO_API_KEY",
-      authDomain: "TUO_PROGETTO.firebaseapp.com",
-      projectId: "TUO_PROGETTO",
-      appId: "1:XXXX:web:YYYY"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    await signInAnonymously(auth);
-
-    // --- UI/Canvas ---
+  <script>
     const form = document.getElementById("firmaForm");
     const canvas = document.getElementById("firmaCanvas");
     const ctx = canvas.getContext("2d");
@@ -59,70 +40,68 @@
     const messageDiv = document.getElementById("message");
     let drawing = false;
 
-    // Legge parametri dal QR
+    // Parametri dal link (email + token)
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     const emailParam = params.get("email");
     if (!token || !emailParam) {
-      alert("Link non valido. Torna alla pagina iniziale e genera un nuovo QR.");
+      alert("Link non valido. Torna alla pagina iniziale.");
       window.location.href = "index.html";
-      throw new Error("Missing params");
     }
     document.getElementById("email").value = decodeURIComponent(emailParam);
 
-    function getPointerPos(e) {
+    // Disegno firma
+    const getPos = (e) => {
       const rect = canvas.getBoundingClientRect();
       const t = e.touches?.[0];
       return t
         ? { x: t.clientX - rect.left, y: t.clientY - rect.top }
         : { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    }
-    // mouse
-    canvas.addEventListener("mousedown", () => (drawing = true));
-    canvas.addEventListener("mouseup", () => { drawing = false; ctx.beginPath(); });
-    canvas.addEventListener("mouseleave", () => { drawing = false; ctx.beginPath(); });
-    canvas.addEventListener("mousemove", (e) => {
-      if (!drawing) return;
-      const p = getPointerPos(e);
-      ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
-      ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x, p.y);
-    });
-    // touch
-    canvas.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; });
-    canvas.addEventListener("touchend", () => { drawing = false; ctx.beginPath(); });
-    canvas.addEventListener("touchmove", (e) => {
-      e.preventDefault();
-      if (!drawing) return;
-      const p = getPointerPos(e);
-      ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
-      ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x, p.y);
-    });
+    };
+
+    ["mousedown", "touchstart"].forEach(ev =>
+      canvas.addEventListener(ev, e => { e.preventDefault(); drawing = true; })
+    );
+    ["mouseup", "mouseleave", "touchend"].forEach(ev =>
+      canvas.addEventListener(ev, e => { e.preventDefault(); drawing = false; ctx.beginPath(); })
+    );
+    ["mousemove", "touchmove"].forEach(ev =>
+      canvas.addEventListener(ev, e => {
+        if (!drawing) return;
+        e.preventDefault();
+        const p = getPos(e);
+        ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
+        ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+      })
+    );
+
     clearBtn.addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
-    // Salvataggio su Firestore (firma come dataURL)
-    form.addEventListener("submit", async (e) => {
+    // Salvataggio in localStorage
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
       const nome = document.getElementById("nome").value.trim();
       const cognome = document.getElementById("cognome").value.trim();
       const email = document.getElementById("email").value.trim();
+
       if (!nome || !cognome) {
-        messageDiv.textContent = "Compila tutti i campi."; messageDiv.style.color = "red";
+        messageDiv.textContent = "Compila tutti i campi."; 
+        messageDiv.style.color = "red";
         return;
       }
 
-      messageDiv.textContent = "⏳ Salvataggio...";
-      messageDiv.style.color = "#333";
-
       const firmaDataURL = canvas.toDataURL("image/png");
-
-      await addDoc(collection(db, "firme"), {
-        nome, cognome, email, token,
-        data: serverTimestamp(),
+      const registro = JSON.parse(localStorage.getItem("registroFirme") || "[]");
+      registro.push({
+        nome, cognome, email,
+        data: new Date().toLocaleString("it-IT"),
         firmaDataURL
       });
+      localStorage.setItem("registroFirme", JSON.stringify(registro));
 
       messageDiv.textContent = "✅ Registrazione completata!";
       messageDiv.style.color = "green";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
   </script>
 </body>
