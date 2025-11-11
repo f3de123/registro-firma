@@ -1,106 +1,72 @@
-// ========== GENERAZIONE QR ==========
-
-// Token semplice per tracciare la sessione QR
-function generaTokenUnivoco() {
+// ===== Genera token + QR =====
+function generaToken() {
   const rand = Math.random().toString(36).substring(2, 10);
-  const timestamp = Date.now().toString(36);
-  return `${rand}-${timestamp}`;
+  const ts = Date.now().toString(36);
+  return `${rand}-${ts}`;
 }
 
-// Mantiene l’eventuale /progetto/ nel path (GitHub Pages)
-function getBasePath() {
-  return window.location.pathname.replace(/index\.html$/, '');
-}
-
-function generaQrDaUrl(url) {
+function generaQr(url) {
   const qrContainer = document.getElementById("qrContainer");
   qrContainer.innerHTML = "";
   const canvas = document.createElement("canvas");
-  QRCode.toCanvas(canvas, url, { width: 220, margin: 2 }, (err) => {
-    if (err) console.error(err);
-  });
+  QRCode.toCanvas(canvas, url, { width: 220, margin: 2 });
   qrContainer.appendChild(canvas);
 
-  const linkDiv = document.getElementById("linkRegistrazione");
-  linkDiv.innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
-  document.getElementById("istruzioni").style.display = "block";
+  document.getElementById("istruzioni").classList.remove("nascosto");
+  document.getElementById("linkRegistrazione").innerHTML = `<a href="${url}" target="_blank">${url}</a>`;
 }
 
-// Genera QR usando l'host pubblico (GitHub Pages)
 document.getElementById("generaQR").addEventListener("click", () => {
   const email = document.getElementById("emailInput").value.trim().toLowerCase();
   if (!email.endsWith("@ittsrimini.edu.it")) {
     alert("L'email deve terminare con @ittsrimini.edu.it");
     return;
   }
-  const token = generaTokenUnivoco();
-  const basePath = getBasePath();
-  const url = `${window.location.origin}${basePath}registra.html?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`;
-  generaQrDaUrl(url);
+  const token = generaToken();
+  const base = window.location.pathname.replace(/index\.html$/, '');
+  const url = `${window.location.origin}${base}registra.html?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`;
+  generaQr(url);
 });
 
-// ========== EXPORT (usa Firestore se disponibile, altrimenti localStorage) ==========
-
-async function getArchivio() {
-  if (typeof window.fetchFirmeFromCloud === "function") {
-    try { return await window.fetchFirmeFromCloud(); }
-    catch (e) { console.warn("Cloud fetch fallita, uso localStorage:", e); }
-  }
-  // Fallback legacy
+// ===== Esportazioni =====
+function getArchivio() {
   return JSON.parse(localStorage.getItem("registroFirme") || "[]");
 }
 
-document.getElementById("exportCsv").addEventListener("click", async () => {
-  const archivio = await getArchivio();
-  if (!archivio.length) {
+// CSV
+document.getElementById("exportCsv").addEventListener("click", () => {
+  const data = getArchivio();
+  if (!data.length) {
     document.getElementById("exportMessage").textContent = "Registro vuoto.";
     return;
   }
-  const rows = [["nome","cognome","email","data","firmaDataURL"]];
-  archivio.forEach(r => rows.push([r.nome, r.cognome, r.email, r.data, r.firmaDataURL || r.firma || ""]));
-
-  const csv = rows.map(r => r.map(cell => `"${(cell ?? '').toString().replace(/"/g,'""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+  const rows = [["nome", "cognome", "email", "data"]];
+  data.forEach(r => rows.push([r.nome, r.cognome, r.email, r.data]));
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
   const a = document.createElement("a");
-  a.href = url; a.download = `registro_firme.csv`; a.click();
-  URL.revokeObjectURL(url);
+  a.href = URL.createObjectURL(blob);
+  a.download = "registro_firme.csv";
+  a.click();
   document.getElementById("exportMessage").textContent = "CSV scaricato.";
 });
 
-document.getElementById("exportPdf").addEventListener("click", async () => {
+// PDF
+document.getElementById("exportPdf").addEventListener("click", () => {
   const { jsPDF } = window.jspdf;
-  const archivio = await getArchivio();
-  if (!archivio.length) {
+  const data = getArchivio();
+  if (!data.length) {
     document.getElementById("exportMessage").textContent = "Registro vuoto.";
     return;
   }
   const doc = new jsPDF({ unit: "pt", format: "a4" });
-  const margin = 40, lineHeight = 18; let y = margin;
-
-  for (const r of archivio) {
-    if (y > 750) { doc.addPage(); y = margin; }
-    doc.setFontSize(12);
-    doc.text(`Nome: ${r.nome || ""}`, margin, y);
-    doc.text(`Cognome: ${r.cognome || ""}`, margin + 250, y);
-    y += lineHeight;
-    doc.text(`Email: ${r.email || ""}`, margin, y);
-    doc.text(`Data: ${r.data || ""}`, margin + 250, y);
-    y += lineHeight;
-
-    const dataUrl = r.firmaDataURL || r.firma || "";
-    if (dataUrl) {
-      try {
-        // Inserisce l'immagine (ridimensionata "a scatola")
-        doc.addImage(dataUrl, 'PNG', margin, y, 220, 70);
-      } catch (e) {
-        console.warn("Firma non inserita:", e);
-      }
-    }
-    y += 90;
-    doc.setDrawColor(200);
-    doc.line(margin, y - 20, 555, y - 20);
-  }
+  let y = 40;
+  data.forEach(r => {
+    doc.text(`Nome: ${r.nome}   Cognome: ${r.cognome}`, 40, y);
+    y += 20;
+    doc.text(`Email: ${r.email}   Data: ${r.data}`, 40, y);
+    y += 40;
+  });
   doc.save("registro_firme.pdf");
-  document.getElementById("exportMessage").textContent = "PDF generato e scaricato.";
+  document.getElementById("exportMessage").textContent = "PDF generato.";
 });
