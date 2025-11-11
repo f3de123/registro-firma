@@ -1,31 +1,69 @@
 body {
   font-family: Arial, sans-serif;
-  background-color: #f5f5f5;
+  background-color: #f2f2f2;
   margin: 0;
-  padding: 20px;
+  padding: 0;
 }
+
 .container {
-  max-width: 600px;
-  background-color: #fff;
+  background: white;
+  max-width: 500px;
+  margin: 40px auto;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-  margin: auto;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
-h1, h2 { text-align: center; color: #333; }
-label { display: block; margin-top: 10px; font-weight: bold; }
-input[type="text"], input[type="email"] {
-  width: 100%; padding: 8px; margin-top: 5px;
-  border: 1px solid #ccc; border-radius: 6px;
+
+h1, h2 {
+  text-align: center;
+  color: #333;
 }
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+input, button, canvas {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
 button {
-  display: block; margin-top: 15px; width: 100%; padding: 10px;
-  background-color: #0078d4; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
 }
-button:hover { background-color: #005a9e; }
-canvas {
-  border: 1px solid #ccc; border-radius: 6px; margin-top: 10px; width: 100%;
+
+button:hover {
+  background-color: #0056b3;
 }
-.canvas-buttons { text-align: right; margin-top: 5px; }
-hr { margin: 25px 0; }
-#exportMessage { text-align: center; margin-top: 10px; font-weight: bold; }
+
+.canvas-buttons {
+  text-align: right;
+  margin-top: 5px;
+}
+
+#qrContainer {
+  text-align: center;
+  margin: 20px 0;
+}
+
+#linkRegistrazione a {
+  color: #007bff;
+  word-break: break-all;
+}
+
+.nascosto {
+  display: none;
+}
+
+#message {
+  text-align: center;
+  margin-top: 15px;
+  font-weight: bold;
+}
